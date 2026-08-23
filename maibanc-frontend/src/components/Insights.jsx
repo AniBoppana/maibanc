@@ -1,7 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { PieChart, Pie, Cell, BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import api from '../api';
 import { CHART_PALETTE, CHART_LINE, CHART_CHARCOAL_SOFT } from '../chartColors';
+
+// The model replies in markdown (bold, lists, etc.) — render it instead of
+// showing the raw "**2.00**" syntax. Overrides only fix spacing/sizing to
+// match the chat bubble; everything else is react-markdown's default.
+const MARKDOWN_COMPONENTS = {
+  p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+  ul: ({ node, ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0" {...props} />,
+  ol: ({ node, ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0" {...props} />,
+  li: ({ node, ...props }) => <li {...props} />,
+  strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+  code: ({ node, ...props }) => (
+    <code className="rounded bg-cream px-1 py-0.5 font-mono text-[12px]" {...props} />
+  ),
+  a: ({ node, ...props }) => <a className="underline" target="_blank" rel="noreferrer" {...props} />,
+};
+
+function AssistantText({ text }) {
+  return (
+    <div className="text-[13.5px] leading-[1.6]">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
 
 const SUGGESTED_PROMPTS = [
   'How much did I spend on food last month?',
@@ -113,7 +140,7 @@ export default function Insights() {
           return (
             <div key={i} className="flex justify-start">
               <div className="mc-chat-bubble-assistant max-w-lg">
-                <p className="whitespace-pre-wrap">{text}</p>
+                <AssistantText text={text} />
                 <InlineChart chart={chart} />
               </div>
             </div>
