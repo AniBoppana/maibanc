@@ -48,6 +48,52 @@ function EditableAccountName({ account, onSave }) {
   );
 }
 
+// Keyed by Plaid's ITEM webhook error_code — set on the item only when the
+// ITEM/ERROR webhook fires. "expiring" is a separate status (from the
+// PENDING_EXPIRATION webhook, which carries no error_code) and is handled
+// via reconnectMessage below instead of this map.
+const ERROR_MESSAGES = {
+  ITEM_LOGIN_REQUIRED: 'This bank needs you to log in again — your credentials or MFA likely changed.',
+};
+
+function reconnectMessage(item) {
+  if (item.status === 'expiring') {
+    return 'This connection is about to expire and will need to be refreshed soon.';
+  }
+  return ERROR_MESSAGES[item.errorCode] ?? 'This connection needs attention — click Reconnect to fix it.';
+}
+
+function ReconnectButton({ itemId, onReconnected }) {
+  const [updateToken, setUpdateToken] = useState(null);
+
+  const fetchUpdateToken = useMutation({
+    mutationFn: async () => (await api.post('/api/plaid/link-token/update', { itemId })).data.linkToken,
+    onSuccess: (token) => setUpdateToken(token),
+  });
+
+  const { open, ready } = usePlaidLink({
+    token: updateToken,
+    onSuccess: async () => {
+      await api.post(`/api/plaid/items/${itemId}/reconnected`);
+      onReconnected();
+    },
+  });
+
+  useEffect(() => {
+    if (updateToken && ready) open();
+  }, [updateToken, ready, open]);
+
+  return (
+    <button
+      onClick={() => fetchUpdateToken.mutate()}
+      disabled={fetchUpdateToken.isPending}
+      className="mc-btn-secondary text-[12px]"
+    >
+      {fetchUpdateToken.isPending ? 'Preparing…' : 'Reconnect'}
+    </button>
+  );
+}
+
 // Plaid's OAuth institutions (Fidelity, many large brokerages) navigate the
 // whole tab away to the bank's real login page, then back to our
 // PLAID_REDIRECT_URI with ?oauth_state_id=... appended. Resuming that flow
@@ -163,14 +209,30 @@ export default function ConnectBank() {
             <div key={item.id} className="mc-card p-5">
               <div className="mb-3 flex items-center justify-between">
                 <div className="font-display text-[15px] font-bold text-charcoal">{item.institutionName}</div>
-                <button
-                  onClick={() => deleteItem.mutate(item.id)}
-                  disabled={deleteItem.isPending}
-                  className="font-body text-[12px] font-semibold text-negative hover:underline"
-                >
-                  Disconnect
-                </button>
+                <div className="flex items-center gap-4">
+                  {item.status !== 'active' && (
+                    <ReconnectButton
+                      itemId={item.id}
+                      onReconnected={() => {
+                        queryClient.invalidateQueries({ queryKey: ['plaidItems'] });
+                        showStamp('Reconnected');
+                      }}
+                    />
+                  )}
+                  <button
+                    onClick={() => deleteItem.mutate(item.id)}
+                    disabled={deleteItem.isPending}
+                    className="font-body text-[12px] font-semibold text-negative hover:underline"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
+              {item.status !== 'active' && (
+                <div className="mb-3 rounded-lg border border-gold/30 bg-gold-soft p-3 font-body text-[12.5px] text-charcoal">
+                  {reconnectMessage(item)}
+                </div>
+              )}
               <table className="mc-table w-full">
                 <thead>
                   <tr>

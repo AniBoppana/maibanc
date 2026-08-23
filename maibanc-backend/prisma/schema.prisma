@@ -16,6 +16,7 @@ model User {
   items         PlaidItem[]
   budgets       Budget[]
   categoryRules CategoryRule[]
+  savingsGoals  SavingsGoal[]
 }
 
 // One row per bank/institution login connected via Plaid Link.
@@ -28,6 +29,10 @@ model PlaidItem {
   institutionId   String?
   institutionName String?
   status          String   @default("active")
+  // Plaid's ITEM webhook error_code (e.g. "ITEM_LOGIN_REQUIRED"), set when
+  // status becomes "error" so the UI can prompt the right fix (reconnect vs.
+  // something else) instead of a generic "something's wrong."
+  errorCode       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -57,6 +62,7 @@ model Account {
   reassignedTransactions  Transaction[]     @relation("ReassignedAccount")
   holdings                Holding[]
   snapshots               BalanceSnapshot[]
+  savingsGoals            SavingsGoal[]
 
   @@index([itemId])
 }
@@ -166,6 +172,26 @@ model CategoryRule {
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// A savings target. If linkedAccountId is set, progress is the linked
+// account's live balance; otherwise progress is tracked manually via
+// currentAmount (e.g. for a goal with no single dedicated account).
+model SavingsGoal {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String
+  targetAmount    Float
+  targetDate      DateTime?
+  linkedAccountId String?
+  currentAmount   Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linkedAccount Account? @relation(fields: [linkedAccountId], references: [id], onDelete: SetNull)
 
   @@index([userId])
 }

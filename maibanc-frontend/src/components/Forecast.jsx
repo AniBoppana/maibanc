@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import api from '../api';
@@ -8,6 +9,197 @@ function money(n) {
   if (n == null) return '—';
   const abs = Math.abs(n);
   return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Local getters on purpose, matching how the rest of the app already
+// displays these dates (e.g. Transactions.jsx's toLocaleDateString) — using
+// UTC getters here instead would make this calendar disagree by a day with
+// every other date shown in the app for viewers west of UTC.
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function buildMonthGrid(year, month) {
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  const cells = [];
+  for (let i = startOffset - 1; i >= 0; i--) {
+    cells.push({ date: new Date(year, month - 1, daysInPrevMonth - i), inMonth: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ date: new Date(year, month, d), inMonth: true });
+  }
+  while (cells.length % 7 !== 0) {
+    const next = new Date(cells[cells.length - 1].date);
+    next.setDate(next.getDate() + 1);
+    cells.push({ date: next, inMonth: false });
+  }
+  return cells;
+}
+
+// Recurring charges only carry a single predicted nextExpected date from
+// the backend. Projects that forward/backward by the detected cadence
+// (nextExpected − lastSeen) to cover whatever month is currently in view.
+function projectRecurringOccurrences(recurring, monthStart, monthEnd) {
+  const occurrences = [];
+  for (const r of recurring) {
+    const last = new Date(r.lastSeen);
+    const next = new Date(r.nextExpected);
+    const intervalMs = next.getTime() - last.getTime();
+    if (!(intervalMs > 0)) continue;
+
+    let occ = next;
+    let guard = 0;
+    while (occ > monthStart && guard < 60) {
+      occ = new Date(occ.getTime() - intervalMs);
+      guard++;
+    }
+    guard = 0;
+    while (occ <= monthEnd && guard < 60) {
+      if (occ >= monthStart) {
+        occurrences.push({ date: occ, merchant: r.merchant, amount: r.averageAmount, category: r.category });
+      }
+      occ = new Date(occ.getTime() + intervalMs);
+      guard++;
+    }
+  }
+  return occurrences;
+}
+
+function MonthCalendar({ recurring }) {
+  const [cursor, setCursor] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+
+  const { data: transactions } = useQuery({
+    queryKey: ['transactions-calendar', year, month],
+    queryFn: async () => {
+      const from = monthStart.toISOString().slice(0, 10);
+      const to = monthEnd.toISOString().slice(0, 10);
+      return (await api.get(`/api/transactions?from=${from}&to=${to}&limit=500`)).data?.transactions || [];
+    },
+  });
+
+  const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
+
+  const transactionsByDay = useMemo(() => {
+    const map = new Map();
+    for (const t of transactions ?? []) {
+      const key = dateKey(new Date(t.date));
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(t);
+    }
+    return map;
+  }, [transactions]);
+
+  const recurringByDay = useMemo(() => {
+    const map = new Map();
+    for (const occ of projectRecurringOccurrences(recurring ?? [], monthStart, monthEnd)) {
+      const key = dateKey(occ.date);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(occ);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recurring, year, month]);
+
+  const todayKey = dateKey(new Date());
+
+  return (
+    <div className="mc-card mb-6 p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-display text-[15px] font-bold text-charcoal">
+          {cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setCursor(new Date(year, month - 1, 1))}
+            className="mc-btn-secondary px-3 py-1.5 text-[12px]"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => {
+              const now = new Date();
+              setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+            }}
+            className="mc-btn-secondary px-3 py-1.5 text-[12px]"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setCursor(new Date(year, month + 1, 1))}
+            className="mc-btn-secondary px-3 py-1.5 text-[12px]"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-line bg-line">
+        {WEEKDAYS.map((w) => (
+          <div
+            key={w}
+            className="bg-cream p-2 text-center font-body text-[10.5px] font-semibold uppercase tracking-wide text-charcoal-soft"
+          >
+            {w}
+          </div>
+        ))}
+        {cells.map((cell, i) => {
+          const key = dateKey(cell.date);
+          const dayTxns = transactionsByDay.get(key) || [];
+          const dayRecurring = recurringByDay.get(key) || [];
+          const net = dayTxns.reduce((s, t) => s - t.amount, 0);
+          return (
+            <div
+              key={i}
+              className={`min-h-[92px] bg-card p-1.5 ${cell.inMonth ? '' : 'opacity-40'} ${
+                key === todayKey ? 'ring-2 ring-inset ring-green' : ''
+              }`}
+            >
+              <div className="font-body text-[11px] text-charcoal-soft">{cell.date.getDate()}</div>
+              {dayTxns.length > 0 && (
+                <div className={`mt-0.5 font-body text-[11px] font-semibold ${net < 0 ? 'text-negative' : 'text-green'}`}>
+                  {net < 0 ? '−' : '+'}${Math.abs(net).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </div>
+              )}
+              {dayRecurring.slice(0, 2).map((r, idx) => (
+                <div
+                  key={idx}
+                  title={`${r.merchant} — ~${money(r.amount)}`}
+                  className="mt-0.5 truncate rounded bg-gold-soft px-1 py-0.5 font-body text-[9.5px] text-charcoal"
+                >
+                  ⟳ {r.merchant}
+                </div>
+              ))}
+              {dayRecurring.length > 2 && (
+                <div className="mt-0.5 font-body text-[9.5px] text-charcoal-soft">+{dayRecurring.length - 2} more</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center gap-4 font-body text-[11px] text-charcoal-soft">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-gold-soft" />
+          Predicted recurring charge
+        </span>
+        <span>Daily totals reflect actual transactions for that day.</span>
+      </div>
+    </div>
+  );
 }
 
 export default function Forecast() {
@@ -23,7 +215,9 @@ export default function Forecast() {
 
   return (
     <div className="p-10">
-      <h1 className="mb-8 font-display text-2xl font-bold text-charcoal">Forecast</h1>
+      <h1 className="mb-8 font-display text-2xl font-bold text-charcoal">Calendar / Forecast</h1>
+
+      <MonthCalendar recurring={forecast?.recurring} />
 
       {bp && (
         <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

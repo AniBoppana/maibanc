@@ -13,6 +13,7 @@ const listQuerySchema = z.object({
   category: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
+  search: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
   cursor: z.string().optional(),
 });
@@ -20,7 +21,8 @@ const listQuerySchema = z.object({
 /**
  * GET /api/transactions
  * Lists the signed-in user's transactions, newest first.
- * Supports filtering by category, date range, and cursor-based pagination.
+ * Supports filtering by category, date range, free-text search, and
+ * cursor-based pagination.
  */
 transactionsRouter.get("/", requireAuth, async (req, res) => {
   const parsed = listQuerySchema.safeParse(req.query);
@@ -28,25 +30,40 @@ transactionsRouter.get("/", requireAuth, async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const { category, from, to, limit, cursor } = parsed.data;
+  const { category, from, to, search, limit, cursor } = parsed.data;
+
+  // Built as an AND array (rather than spreading each condition's own OR key
+  // straight into the where object) because category and search each need
+  // their own OR clause — spreading two OR keys into one object would let
+  // the second silently clobber the first.
+  const conditions: object[] = [];
+  if (category) {
+    // Effective category: the manual override if one exists, else the raw
+    // Plaid category. A transaction with a userCategory never matches a
+    // filter on its old raw category — the override is meant to replace it.
+    conditions.push({ OR: [{ userCategory: category }, { AND: [{ userCategory: null }, { category }] }] });
+  }
+  if (from || to) {
+    conditions.push({
+      date: {
+        ...(from ? { gte: new Date(from) } : {}),
+        ...(to ? { lte: new Date(to) } : {}),
+      },
+    });
+  }
+  if (search) {
+    conditions.push({
+      OR: [
+        { name: { contains: search, mode: "insensitive" } },
+        { merchantName: { contains: search, mode: "insensitive" } },
+      ],
+    });
+  }
 
   const transactions = await prisma.transaction.findMany({
     where: {
       account: { item: { userId: req.userId! } },
-      // Effective category: the manual override if one exists, else the raw
-      // Plaid category. A transaction with a userCategory never matches a
-      // filter on its old raw category — the override is meant to replace it.
-      ...(category
-        ? { OR: [{ userCategory: category }, { AND: [{ userCategory: null }, { category }] }] }
-        : {}),
-      ...(from || to
-        ? {
-            date: {
-              ...(from ? { gte: new Date(from) } : {}),
-              ...(to ? { lte: new Date(to) } : {}),
-            },
-          }
-        : {}),
+      ...(conditions.length > 0 ? { AND: conditions } : {}),
     },
     orderBy: { date: "desc" },
     take: limit,

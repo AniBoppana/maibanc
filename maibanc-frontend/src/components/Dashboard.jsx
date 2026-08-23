@@ -1,8 +1,36 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { AreaChart, Area, PieChart, Pie, Cell, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 'recharts';
 import api from '../api';
 import { CHART_PALETTE, CHART_LINE, CHART_CHARCOAL_SOFT } from '../chartColors';
 import { formatCategory } from '../format';
+
+const DISMISSED_ALERTS_KEY = 'maibanc:dismissedAlerts';
+
+function useDismissedAlerts() {
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(DISMISSED_ALERTS_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+
+  const dismiss = (id) => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify([...next]));
+      } catch {
+        // Dismissal just won't persist across reloads in this browser — not worth surfacing.
+      }
+      return next;
+    });
+  };
+
+  return [dismissed, dismiss];
+}
 
 function money(n, opts = {}) {
   if (n == null) return '—';
@@ -32,10 +60,17 @@ export default function Dashboard() {
     queryKey: ['networth-history', 90],
     queryFn: async () => (await api.get('/api/networth/history?days=90')).data,
   });
+  const { data: alerts } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: async () => (await api.get('/api/alerts')).data?.alerts || [],
+  });
+  const [dismissed, dismissAlert] = useDismissedAlerts();
 
   if (accountsLoading || forecastLoading) {
     return <div className="p-10 font-body text-sm text-charcoal-soft">Loading dashboard…</div>;
   }
+
+  const visibleAlerts = (alerts ?? []).filter((a) => !dismissed.has(a.id));
 
   const netWorth = accounts?.netWorth ?? 0;
   const bp = forecast?.balanceProjection;
@@ -55,6 +90,29 @@ export default function Dashboard() {
       <p className="mb-8 font-body text-[13.5px] text-charcoal-soft">
         Everything connected, at a glance.
       </p>
+
+      {visibleAlerts.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {visibleAlerts.map((a) => (
+            <div
+              key={a.id}
+              className={`flex items-center justify-between rounded-xl border p-4 font-body text-[13px] ${
+                a.severity === 'critical'
+                  ? 'border-negative/30 bg-coral-soft text-negative'
+                  : 'border-gold/30 bg-gold-soft text-charcoal'
+              }`}
+            >
+              <span>{a.message}</span>
+              <button
+                onClick={() => dismissAlert(a.id)}
+                className="ml-4 shrink-0 font-body text-[12px] font-semibold opacity-70 hover:opacity-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[

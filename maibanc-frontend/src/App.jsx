@@ -43,11 +43,11 @@ const queryClient = new QueryClient({
 
 const PAGES = [
   { id: 'dashboard', label: 'Dashboard', icon: IconGrid, component: Dashboard },
-  { id: 'networth', label: 'Net Worth', icon: IconTrendUp, component: NetWorth },
   { id: 'transactions', label: 'Transactions', icon: IconList, component: Transactions },
-  { id: 'budgets', label: 'Budgets', icon: IconTarget, component: Budgets },
   { id: 'investments', label: 'Investments', icon: IconBarChart, component: Investments },
-  { id: 'forecast', label: 'Forecast', icon: IconCalendar, component: Forecast },
+  { id: 'forecast', label: 'Calendar / Forecast', icon: IconCalendar, component: Forecast },
+  { id: 'budgets', label: 'Budgets', icon: IconTarget, component: Budgets },
+  { id: 'networth', label: 'Net Worth', icon: IconTrendUp, component: NetWorth },
   { id: 'tax', label: 'Tax Report', icon: IconFile, component: TaxReport },
   { id: 'business', label: 'Business P&L', icon: IconBriefcase, component: BusinessPnL },
   { id: 'insights', label: 'Insights', icon: IconSpark, component: Insights },

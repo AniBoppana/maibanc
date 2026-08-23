@@ -6,6 +6,7 @@ import { prisma } from "../db/client";
 import { requireAuth } from "../middleware/auth";
 import { syncTransactionsForItem } from "../services/transactionSync";
 import { syncInvestmentsForItem } from "../services/investmentsSync";
+import { verifyPlaidWebhook } from "../services/plaidWebhookVerify";
 
 
 export const plaidRouter = Router();
@@ -33,6 +34,43 @@ plaidRouter.post("/link-token", requireAuth, async (req, res) => {
   } catch (err: any) {
     console.error("link-token error:", err?.response?.data ?? err);
     res.status(500).json({ error: "Failed to create link token." });
+  }
+});
+
+/**
+ * POST /api/plaid/link-token/update
+ * Creates a Link token in "update mode" for an item that needs
+ * re-authentication (e.g. a bank forced a re-login). Reuses the item's
+ * existing access token instead of creating a new connection, so accounts,
+ * transaction history, and IDs stay the same after the user reconnects.
+ */
+plaidRouter.post("/link-token/update", requireAuth, async (req, res) => {
+  const { itemId } = req.body as { itemId?: string };
+  if (!itemId) {
+    res.status(400).json({ error: "itemId is required." });
+    return;
+  }
+
+  const item = await prisma.plaidItem.findFirst({ where: { id: itemId, userId: req.userId! } });
+  if (!item) {
+    res.status(404).json({ error: "Item not found." });
+    return;
+  }
+
+  try {
+    const response = await plaidClient.linkTokenCreate({
+      user: { client_user_id: req.userId! },
+      client_name: process.env.PLAID_CLIENT_NAME ?? "Personal Finance App",
+      country_codes: [CountryCode.Us],
+      language: "en",
+      access_token: decrypt(item.accessToken),
+      webhook: process.env.PLAID_WEBHOOK_URL || undefined,
+      redirect_uri: process.env.PLAID_REDIRECT_URI || undefined,
+    });
+    res.json({ linkToken: response.data.link_token });
+  } catch (err: any) {
+    console.error("link-token update error:", err?.response?.data ?? err);
+    res.status(500).json({ error: "Failed to create update link token." });
   }
 });
 
@@ -122,6 +160,7 @@ plaidRouter.get("/items", requireAuth, async (req, res) => {
       institutionName: true,
       institutionId: true,
       status: true,
+      errorCode: true,
       createdAt: true,
       accounts: {
         select: {
@@ -159,14 +198,38 @@ plaidRouter.delete("/items/:id", requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/plaid/items/:id/reconnected
+ * Called by the client right after Plaid Link's update-mode flow reports
+ * success, to clear the item's error state immediately rather than waiting
+ * on the next webhook.
+ */
+plaidRouter.post("/items/:id/reconnected", requireAuth, async (req, res) => {
+  const item = await prisma.plaidItem.findFirst({ where: { id: req.params.id, userId: req.userId! } });
+  if (!item) {
+    res.status(404).json({ error: "Item not found." });
+    return;
+  }
+  await prisma.plaidItem.update({
+    where: { id: item.id },
+    data: { status: "active", errorCode: null },
+  });
+  res.status(204).send();
+});
+
+/**
  * POST /api/plaid/webhook
  * Plaid calls this when new transaction data is ready or an item errors.
- *
- * NOTE: Webhook signature verification is not yet implemented.
- * See README section "Before you expose this publicly" for details.
+ * Verifies Plaid's signature (Plaid-Verification header) before trusting
+ * the payload — see services/plaidWebhookVerify.ts.
  */
 plaidRouter.post("/webhook", async (req, res) => {
-  const { webhook_type, webhook_code, item_id } = req.body ?? {};
+  const verified = await verifyPlaidWebhook(req.header("Plaid-Verification"), req.rawBody);
+  if (!verified) {
+    res.status(401).json({ error: "Invalid webhook signature." });
+    return;
+  }
+
+  const { webhook_type, webhook_code, item_id, error } = req.body ?? {};
 
   try {
     if (
@@ -183,7 +246,7 @@ plaidRouter.post("/webhook", async (req, res) => {
     if (webhook_type === "ITEM" && webhook_code === "ERROR") {
       await prisma.plaidItem.updateMany({
         where: { plaidItemId: item_id },
-        data: { status: "error" },
+        data: { status: "error", errorCode: error?.error_code ?? null },
       });
     }
 

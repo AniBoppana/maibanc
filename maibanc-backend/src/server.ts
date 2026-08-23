@@ -15,6 +15,8 @@ import { taxRouter } from "./routes/tax";
 import { businessRouter } from "./routes/business";
 import { insightsRouter } from "./routes/insights";
 import { categoryRulesRouter } from "./routes/categoryRules";
+import { savingsGoalsRouter } from "./routes/savingsGoals";
+import { alertsRouter } from "./routes/alerts";
 import { devTokenRouter } from "./routes/devToken";
 
 // ── Startup env check ─────────────────────────────────────────────────────────
@@ -42,7 +44,16 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
+// Captures the exact raw bytes of each request body alongside the parsed
+// JSON — Plaid's webhook signature covers a hash of those exact bytes, and
+// re-serializing the parsed object isn't guaranteed to reproduce them.
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 
 // Populates req.auth via getAuth() — does not block unauthenticated requests.
 // requireAuth middleware (per-route) is what actually enforces login.
@@ -63,6 +74,8 @@ app.use("/api/tax", taxRouter);
 app.use("/api/business", businessRouter);
 app.use("/api/insights", insightsRouter);
 app.use("/api/category-rules", categoryRulesRouter);
+app.use("/api/savings-goals", savingsGoalsRouter);
+app.use("/api/alerts", alertsRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: "Not found." }));

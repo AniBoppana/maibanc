@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { formatCategory } from '../format';
 
 const TAX_CATEGORIES = [
@@ -270,8 +270,16 @@ export default function Transactions() {
   const [category, setCategory] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [splittingId, setSplittingId] = useState(null);
   const [error, setError] = useState(null);
+
+  // Debounced so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -284,12 +292,13 @@ export default function Transactions() {
   });
 
   const { data: transactions, isLoading } = useQuery({
-    queryKey: ['transactions', category, fromDate, toDate],
+    queryKey: ['transactions', category, fromDate, toDate, search],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (category) params.append('category', category);
       if (fromDate) params.append('from', fromDate);
       if (toDate) params.append('to', toDate);
+      if (search) params.append('search', search);
       params.append('limit', '150');
       return (await api.get(`/api/transactions?${params.toString()}`)).data?.transactions || [];
     },
@@ -359,7 +368,19 @@ export default function Transactions() {
         </p>
       )}
 
-      <div className="mc-card mb-6 grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
+      <div className="mc-card mb-6 grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="block">
+          <span className="mb-1.5 block font-body text-[11.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
+            Search
+          </span>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Merchant or description"
+            className="mc-input w-full"
+          />
+        </label>
         <label className="block">
           <span className="mb-1.5 block font-body text-[11.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
             Category
