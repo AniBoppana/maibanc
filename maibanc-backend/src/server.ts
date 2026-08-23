@@ -61,7 +61,14 @@ app.use(clerkMiddleware());
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => res.json({ ok: true, env: process.env.PLAID_ENV }));
-app.use("/dev-token", devTokenRouter);
+// Testing helper only: verifies a password and mints a session token outside
+// Clerk's own hosted flow (no rate limiting, and its errors reveal whether an
+// email exists). Was mounted unconditionally — restricted to dev the same way
+// the X-Dev-User-Id bypass already is, so it doesn't exist as an attack
+// surface once NODE_ENV=production.
+if (process.env.NODE_ENV === "development") {
+  app.use("/dev-token", devTokenRouter);
+}
 
 app.use("/api/plaid", plaidRouter);
 app.use("/api/transactions", transactionsRouter);
