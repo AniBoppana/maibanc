@@ -334,11 +334,30 @@ export default function Transactions() {
     onSettled: invalidateAll,
   });
 
+  const syncMutation = useMutation({
+    mutationFn: async () => api.post('/api/transactions/sync'),
+    onSettled: invalidateAll,
+  });
+
   return (
     <div className="p-10">
-      <h1 className="mb-6 font-display text-2xl font-bold text-charcoal">Transactions</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold text-charcoal">Transactions</h1>
+        <button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          className="mc-btn-secondary text-[12.5px] disabled:opacity-50"
+        >
+          {syncMutation.isPending ? 'Syncing…' : 'Sync now'}
+        </button>
+      </div>
 
-      <RulesPanel />
+      {syncMutation.isSuccess && (
+        <p className="mb-4 font-body text-[12px] text-charcoal-soft">
+          Synced. A freshly connected bank can take Plaid a few minutes to finish its first pull — if
+          nothing new shows up yet, try again shortly.
+        </p>
+      )}
 
       <div className="mc-card mb-6 grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
         <label className="block">
@@ -497,6 +516,10 @@ export default function Transactions() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-6">
+        <RulesPanel />
       </div>
 
       <datalist id="known-categories">
