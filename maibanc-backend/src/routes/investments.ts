@@ -7,6 +7,14 @@ import { getSP500History } from "../services/marketData";
 
 export const investmentsRouter = Router();
 
+// Plaid's investments/holdings barely change intraday, but re-fetching from
+// Plaid on every page view was adding a full round trip per connected item
+// (serially) to every load of this route. Throttle re-syncs per item instead
+// of doing it on every request; a page load within the window just reads
+// what's already in Postgres.
+const SYNC_THROTTLE_MS = 5 * 60 * 1000;
+const lastSyncedAt = new Map<string, number>();
+
 const ALLOCATION_GROUPS: Record<string, string> = {
   equity: "Stocks",
   etf: "Stocks",
@@ -32,13 +40,18 @@ investmentsRouter.get("/", requireAuth, async (req, res) => {
     where: { userId: req.userId!, status: "active" },
   });
 
-  for (const item of items) {
-    try {
-      await syncInvestmentsForItem(item.id, decrypt(item.accessToken));
-    } catch (err) {
-      console.error(`Investments sync failed for item ${item.id}:`, err);
-    }
-  }
+  await Promise.allSettled(
+    items.map(async (item) => {
+      const last = lastSyncedAt.get(item.id) ?? 0;
+      if (Date.now() - last < SYNC_THROTTLE_MS) return;
+      try {
+        await syncInvestmentsForItem(item.id, decrypt(item.accessToken));
+        lastSyncedAt.set(item.id, Date.now());
+      } catch (err) {
+        console.error(`Investments sync failed for item ${item.id}:`, err);
+      }
+    })
+  );
 
   const accounts = await prisma.account.findMany({
     where: { item: { userId: req.userId! }, holdings: { some: {} } },

@@ -28,7 +28,18 @@ import {
 import './App.css';
 import './monarch.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Default staleTime is 0, so every remount/tab-focus refetched from
+      // the network even for data that just loaded — costly when each
+      // round trip has to reach a cold-started backend/database. Cached
+      // data is shown instantly and refreshed in the background instead.
+      staleTime: 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const PAGES = [
   { id: 'dashboard', label: 'Dashboard', icon: IconGrid, component: Dashboard },
