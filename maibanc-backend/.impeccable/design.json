@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-13T08:00:00Z",
+  "title": "Design System: Maibanc",
+  "extensions": {
+    "colorMeta": {
+      "cream": {
+        "role": "neutral",
+        "displayName": "Cream",
+        "canonical": "#f5f7f3",
+        "tonalRamp": ["#252524", "#60615f", "#9c9d9a", "#d7d9d5", "#f6f8f4", "#f9faf7", "#fbfcfa", "#fefefd"]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#262626", "#646464", "#a2a2a2", "#e0e0e0", "#ffffff", "#ffffff", "#ffffff", "#ffffff"]
+      },
+      "charcoal": {
+        "role": "neutral",
+        "displayName": "Charcoal",
+        "canonical": "#23262b",
+        "tonalRamp": ["#050606", "#0e0f11", "#16181b", "#1f2126", "#3e4045", "#737578", "#a9aaac", "#dededf"]
+      },
+      "charcoal-soft": {
+        "role": "neutral",
+        "displayName": "Charcoal Soft",
+        "canonical": "#7c8289",
+        "tonalRamp": ["#131415", "#313336", "#4f5357", "#6d7278", "#8c9197", "#acb0b4", "#ccced1", "#ebeced"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "canonical": "#e6eae5",
+        "tonalRamp": ["#232322", "#5a5c5a", "#929592", "#cacec9", "#e9ede8", "#eff2ee", "#f5f7f5", "#fbfcfb"]
+      },
+      "green": {
+        "role": "primary",
+        "displayName": "Maibanc Green",
+        "canonical": "#00bf63",
+        "tonalRamp": ["#001d0f", "#004b27", "#00793f", "#00a857", "#1fc776", "#5dd69c", "#9be6c2", "#d9f5e8"]
+      },
+      "blue": {
+        "role": "secondary",
+        "displayName": "Maibanc Blue",
+        "canonical": "#2e56a8",
+        "tonalRamp": ["#070d19", "#122242", "#1d376b", "#284c94", "#476bb3", "#7a94c8", "#adbddd", "#e0e6f2"]
+      },
+      "gold": {
+        "role": "tertiary",
+        "displayName": "Gold",
+        "canonical": "#d1a13b",
+        "tonalRamp": ["#1f1809", "#523f17", "#856626", "#b88d34", "#d7ac53", "#e2c382", "#eddab2", "#f8f1e2"]
+      },
+      "violet": {
+        "role": "tertiary",
+        "displayName": "Violet",
+        "canonical": "#7c5cbf",
+        "tonalRamp": ["#130e1d", "#31244b", "#4f3a79", "#6d51a8", "#8c70c7", "#ac97d6", "#ccbfe6", "#ebe7f5"]
+      },
+      "coral": {
+        "role": "negative",
+        "displayName": "Coral",
+        "canonical": "#d2503f",
+        "tonalRamp": ["#200c09", "#531f19", "#863328", "#b94637", "#d76556", "#e29085", "#edbab4", "#f8e5e2"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Bricolage Grotesque", "purpose": "Page titles, card headlines, headline figures." },
+      "body": { "displayName": "Public Sans", "purpose": "Labels, table cells, nav, body copy, chat." }
+    },
+    "shadows": [
+      { "name": "card-ambient", "value": "0 1px 2px rgba(35,38,43,0.04), 0 8px 24px -12px rgba(35,38,43,0.10)", "purpose": "The soft ambient shadow every card floats on." },
+      { "name": "button-hover", "value": "0 6px 16px -6px rgba(35,38,43,0.35)", "purpose": "Primary button hover lift." }
+    ],
+    "motion": [],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid charcoal button, lifts on hover.",
+      "html": "<button class=\"ds-btn-primary\">Add Budget</button>",
+      "css": ".ds-btn-primary { font-family: 'Public Sans', -apple-system, sans-serif; font-size: 13.5px; font-weight: 600; border-radius: 11px; background: #23262b; color: #ffffff; padding: 10px 18px; border: none; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease; } .ds-btn-primary:hover { box-shadow: 0 6px 16px -6px rgba(35,38,43,0.35); transform: translateY(-1px); } .ds-btn-primary:disabled { opacity: 0.45; cursor: default; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Cream outline button — Export CSV, secondary actions.",
+      "html": "<button class=\"ds-btn-secondary\">Export CSV</button>",
+      "css": ".ds-btn-secondary { font-family: 'Public Sans', -apple-system, sans-serif; font-size: 13px; font-weight: 600; border-radius: 11px; background: #f5f7f3; color: #23262b; border: 1px solid #e6eae5; padding: 9px 16px; cursor: pointer; } .ds-btn-secondary:hover { background: #e6eae5; } .ds-btn-secondary:disabled { opacity: 0.45; cursor: default; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The base container for every stat, chart, and table on every page.",
+      "html": "<div class=\"ds-card\"><h2>Net Worth</h2></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 18px; border: 1px solid #e6eae5; box-shadow: 0 1px 2px rgba(35,38,43,0.04), 0 8px 24px -12px rgba(35,38,43,0.10); padding: 24px; }"
+    },
+    {
+      "name": "Toggle",
+      "kind": "custom",
+      "refersTo": "toggle",
+      "description": "Business-account flag switch on Connect Bank.",
+      "html": "<button class=\"ds-toggle\" data-on=\"true\"></button>",
+      "css": ".ds-toggle { position: relative; width: 38px; height: 22px; border-radius: 999px; background: #e6eae5; border: none; cursor: pointer; } .ds-toggle[data-on='true'] { background: #00bf63; } .ds-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: transform 0.15s ease; } .ds-toggle[data-on='true']::after { transform: translateX(16px); }"
+    },
+    {
+      "name": "Table",
+      "kind": "custom",
+      "refersTo": "table",
+      "description": "Card-embedded data table — no zebra striping, line-colored row dividers.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Category</th><th style=\"text-align:right\">Amount</th></tr></thead><tbody><tr><td>Food And Drink</td><td class=\"ds-amount\">$511</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; font-family: 'Public Sans', -apple-system, sans-serif; } .ds-table th { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #7c8289; text-align: left; padding: 0 0 10px; border-bottom: 1px solid #e6eae5; } .ds-table td { padding: 13px 0; border-bottom: 1px solid #e6eae5; font-size: 13.5px; color: #23262b; } .ds-amount { text-align: right; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Sidebar page link — icon + label, full-pill radius, solid green when active.",
+      "html": "<button class=\"ds-nav-item\" data-active=\"true\">Dashboard</button>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-family: 'Public Sans', -apple-system, sans-serif; font-size: 13.5px; font-weight: 500; color: #7c8289; background: transparent; } .ds-nav-item[data-active='true'] { background: #00bf63; color: #ffffff; font-weight: 600; }"
+    },
+    {
+      "name": "Chat Bubble",
+      "kind": "custom",
+      "refersTo": "chat-bubble",
+      "description": "Insights conversation bubble, user vs. assistant.",
+      "html": "<div class=\"ds-bubble-assistant\">Ask about your real accounts, spending, budgets, and forecast.</div>",
+      "css": ".ds-bubble-user { background: #23262b; color: #fff; border-radius: 16px 16px 4px 16px; padding: 12px 16px; font-size: 13.5px; } .ds-bubble-assistant { background: #fff; border: 1px solid #e6eae5; color: #23262b; border-radius: 16px 16px 16px 4px; padding: 12px 16px; font-size: 13.5px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Charts as the Centerpiece, Branded in Green and Blue",
+    "overview": "Maibanc replaced its first shipped identity — a bound-ledger, zero-radius, ruled-table system — with a card-based, chart-forward system at the user's explicit direction, using Monarch Money as a named reference and then deliberately differentiating it on Maibanc's own brand colors rather than a generic soft-SaaS palette. Every page is a set of white, generously-rounded cards floating on a cool cream ground; real charts carry the story on every page. Nothing is fabricated — every chart and figure reflects real Plaid data, real IRS/FTB tax brackets, or an honest 'not available' state.",
+    "keyCharacteristics": [
+      "Cool cream background holding white cards with soft layered shadows and 18px radius.",
+      "Maibanc's real brand green is the system's primary voice; brand blue is secondary; gold/violet/coral fill out multi-category charts.",
+      "Bricolage Grotesque carries every heading and headline figure; Public Sans carries labels, tables, and body text.",
+      "Every chart renders with isAnimationActive={false} — data is legible on first paint."
+    ],
+    "rules": [
+      { "name": "The One Negative Rule", "body": "Coral is the system's only negative/warning color — losses, over-budget bars, liabilities, destructive actions. It never appears as a decorative or category-neutral color.", "section": "colors" },
+      { "name": "The Tabular Truth Rule", "body": "Every rendered dollar figure uses tabular-nums and is right-aligned in tables.", "section": "typography" },
+      { "name": "The Soft Shadow Rule", "body": "Every shadow is ambient (blur, low opacity, no hard offset). No hard-offset block shadows.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do lead every page with a real chart or headline figure, not a row of identical icon-plus-text cards.",
+      "Do keep green exclusive to positive/primary meaning and coral exclusive to negative/destructive meaning.",
+      "Do set isAnimationActive={false} on every recharts element.",
+      "Do color multi-series charts with <Cell>, never a raw SVG element.",
+      "Do show an honest empty/unavailable state rather than fabricating data."
+    ],
+    "donts": [
+      "Don't introduce a new accent color outside green/blue/gold/violet/coral without updating this system deliberately.",
+      "Don't use a hard-offset shadow anywhere in this system.",
+      "Don't let a chart's entrance animation be the only way data becomes visible.",
+      "Don't reintroduce the prior ledger system's zero-radius, ruled-table language on a new page."
+    ]
+  }
+}

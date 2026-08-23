@@ -1,0 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Public+Sans:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Maibanc system — cards, soft-but-branded palette, charts as centerpiece.
+     Green/blue are the real brand marks pulled from public/logo.svg. */
+  --color-cream: #f5f7f3;
+  --color-card: #ffffff;
+  --color-charcoal: #23262b;
+  --color-charcoal-soft: #7c8289;
+  --color-line: #e6eae5;
+
+  --color-green: #00bf63;
+  --color-green-soft: #e1f7ea;
+  --color-blue: #2e56a8;
+  --color-blue-soft: #e3e9f5;
+  --color-gold: #d1a13b;
+  --color-gold-soft: #f5ecd6;
+  --color-violet: #7c5cbf;
+  --color-violet-soft: #ece6f6;
+  --color-coral: #d2503f;
+  --color-coral-soft: #fae3df;
+  --color-negative: #d2503f;
+
+  --font-display: "Bricolage Grotesque", "General Sans", -apple-system, sans-serif;
+  --font-body: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-cream);
+  color: var(--color-charcoal);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}

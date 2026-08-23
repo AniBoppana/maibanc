@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// One row per Clerk user. The id IS the Clerk user id.
+model User {
+  id        String   @id
+  email     String?
+  createdAt DateTime @default(now())
+
+  items         PlaidItem[]
+  budgets       Budget[]
+  categoryRules CategoryRule[]
+}
+
+// One row per bank/institution login connected via Plaid Link.
+model PlaidItem {
+  id              String   @id @default(cuid())
+  userId          String
+  plaidItemId     String   @unique
+  accessToken     String
+  cursor          String?
+  institutionId   String?
+  institutionName String?
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@index([userId])
+}
+
+model Account {
+  id               String  @id @default(cuid())
+  plaidAccountId   String  @unique
+  itemId           String
+  name             String
+  nickname         String?
+  officialName     String?
+  type             String
+  subtype          String?
+  mask             String?
+  currentBalance   Float?
+  availableBalance Float?
+  isoCurrencyCode  String? @default("USD")
+  isBusiness       Boolean @default(false)
+
+  item                    PlaidItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transactions            Transaction[]
+  reassignedTransactions  Transaction[]     @relation("ReassignedAccount")
+  holdings                Holding[]
+  snapshots               BalanceSnapshot[]
+
+  @@index([itemId])
+}
+
+// One row per (account, day) — real recorded balance, accumulated going
+// forward by a daily snapshot job. Net worth history before an account's
+// first snapshot is reconstructed from transactions instead (see
+// netWorthService.ts); reconstructed and recorded points are never mixed
+// for the same day.
+model BalanceSnapshot {
+  id        String   @id @default(cuid())
+  accountId String
+  date      DateTime @db.Date
+  balance   Float
+  createdAt DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
+  @@index([date])
+}
+
+// One row per security Plaid returns across all accounts (stocks, ETFs, funds, cash, crypto).
+model Security {
+  id              String   @id @default(cuid())
+  plaidSecurityId String   @unique
+  tickerSymbol    String?
+  name            String?
+  type            String? // equity | etf | mutual fund | cash | cryptocurrency | fixed income | derivative | other
+  closePrice      Float?
+  isoCurrencyCode String?  @default("USD")
+  updatedAt       DateTime @updatedAt
+
+  holdings Holding[]
+}
+
+// One row per (account, security) position, from /investments/holdings/get.
+model Holding {
+  id               String   @id @default(cuid())
+  accountId        String
+  securityId       String
+  quantity         Float
+  costBasis        Float?
+  institutionValue Float
+  institutionPrice Float
+  isoCurrencyCode  String?  @default("USD")
+  updatedAt        DateTime @updatedAt
+
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  security Security @relation(fields: [securityId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, securityId])
+  @@index([accountId])
+}
+
+model Transaction {
+  id                  String   @id @default(cuid())
+  plaidTransactionId  String   @unique
+  accountId           String
+  amount              Float
+  isoCurrencyCode     String?  @default("USD")
+  date                DateTime
+  name                String
+  merchantName        String?
+  category            String? // raw Plaid category — always what Plaid last synced, never hand-edited
+  userCategory        String? // manual override; wins over `category` everywhere it's displayed/aggregated
+  taxCategory         String? // DEDUCTIBLE | BUSINESS | CHARITABLE | MEDICAL | EDUCATION | HOME_OFFICE | MILEAGE_TRAVEL
+  reassignedAccountId String? // "this charge really belongs to" a different account (e.g. business
+  // expense accidentally charged to a personal card) — bookkeeping-only, never touches the real
+  // Plaid account/transaction, but is what Business P&L and per-account views should attribute it to.
+  pending             Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  account            Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  reassignedAccount  Account?           @relation("ReassignedAccount", fields: [reassignedAccountId], references: [id], onDelete: SetNull)
+  splits             TransactionSplit[]
+
+  @@index([accountId])
+  @@index([date])
+  @@index([category])
+  @@index([taxCategory])
+  @@index([reassignedAccountId])
+}
+
+// When present for a transaction, its amount is spread across these
+// category allocations instead of counted once under the transaction's
+// own category (e.g. one Costco run split between Food and Household).
+model TransactionSplit {
+  id            String @id @default(cuid())
+  transactionId String
+  category      String
+  amount        Float
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+}
+
+// User-defined "always categorize X as Y" rules, matched against a
+// transaction's merchant/name (case-insensitive substring) whenever a new
+// transaction is synced from Plaid.
+model CategoryRule {
+  id         String   @id @default(cuid())
+  userId     String
+  matchValue String // substring matched against merchantName/name, case-insensitive
+  category   String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  amount    Float
+  period    String   @default("monthly")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category, period])
+}
