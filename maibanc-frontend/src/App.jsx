@@ -80,11 +80,20 @@ function AuthBridge() {
 function AppShell() {
   // Plaid OAuth institutions (Fidelity, etc.) navigate the whole tab away
   // and back to this URL with ?oauth_state_id=... — land on Connect Bank so
-  // ConnectBank's resume logic actually mounts and runs.
-  const [currentPage, setCurrentPage] = useState(() =>
-    window.location.search.includes('oauth_state_id') ? 'connect' : 'dashboard'
-  );
+  // ConnectBank's resume logic actually mounts and runs. Otherwise the
+  // current tab is kept in the URL hash so a reload doesn't bounce back to
+  // the dashboard.
+  const [currentPage, setCurrentPageState] = useState(() => {
+    if (window.location.search.includes('oauth_state_id')) return 'connect';
+    const fromHash = window.location.hash.slice(1);
+    return PAGES.some((p) => p.id === fromHash) ? fromHash : 'dashboard';
+  });
   const ActivePage = PAGES.find((p) => p.id === currentPage)?.component ?? Dashboard;
+
+  const setCurrentPage = (id) => {
+    setCurrentPageState(id);
+    window.history.replaceState(null, '', `#${id}`);
+  };
 
   return (
     <div className="mc-shell flex">

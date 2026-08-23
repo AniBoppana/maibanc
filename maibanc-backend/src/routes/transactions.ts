@@ -174,14 +174,32 @@ transactionsRouter.patch("/:id/category", requireAuth, async (req, res) => {
     data: { userCategory: parsed.data.category },
   });
 
+  let appliedTo = 0;
   if (parsed.data.createRule && parsed.data.category) {
     const matchValue = txn.merchantName ?? txn.name;
     await prisma.categoryRule.create({
       data: { userId: req.userId!, matchValue, category: parsed.data.category },
     });
+
+    // Also apply retroactively to this merchant's other prior transactions —
+    // otherwise "always categorize X this way" only ever affects new syncs,
+    // which reads as broken when you check the transactions you already have.
+    const { count } = await prisma.transaction.updateMany({
+      where: {
+        account: { item: { userId: req.userId! } },
+        id: { not: txn.id },
+        userCategory: null,
+        OR: [
+          { name: { contains: matchValue, mode: "insensitive" } },
+          { merchantName: { contains: matchValue, mode: "insensitive" } },
+        ],
+      },
+      data: { userCategory: parsed.data.category },
+    });
+    appliedTo = count;
   }
 
-  res.json({ transaction: updated });
+  res.json({ transaction: updated, appliedTo });
 });
 
 const reassignSchema = z.object({
