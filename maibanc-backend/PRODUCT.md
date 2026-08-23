@@ -36,7 +36,7 @@ Single self-hosted deployment (currently local dev; not yet deployed to a public
 
 `FinanceOS_desktop_app.html` at the project root is an early static mockup (dark terminal-style UI, "FinanceOS" name, JetBrains Mono, dense layout). The user has confirmed this is rough/early and explicitly **not** the committed visual direction — a full visual redesign is wanted, avoiding generic AI-slop patterns (boring gradients, overused rounded cards, uninspired layouts). Treat the mockup's name, palette, and layout as superseded, not as binding evidence, in any future design work.
 
-The working frontend (`finance-frontend/`) currently uses default/unstyled Tailwind utility classes with no committed visual system — functional but not art-directed.
+The working frontend (`maibanc-frontend/`) currently uses default/unstyled Tailwind utility classes with no committed visual system — functional but not art-directed.
 
 ## Product Principles
 

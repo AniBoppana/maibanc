@@ -53,7 +53,7 @@ insightsRouter.post("/chat", requireAuth, async (req, res) => {
 
   if (!process.env.GROQ_API_KEY) {
     res.status(503).json({
-      error: "GROQ_API_KEY is not set on the backend yet. Add it to finance-backend/.env and restart the server.",
+      error: "GROQ_API_KEY is not set on the backend yet. Add it to maibanc-backend/.env and restart the server.",
     });
     return;
   }
