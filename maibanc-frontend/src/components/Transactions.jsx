@@ -265,11 +265,13 @@ function RulesPanel() {
   );
 }
 
-export default function Transactions() {
+export default function Transactions({ params } = {}) {
   const queryClient = useQueryClient();
   const [category, setCategory] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  // Arriving from a calendar day click (see Forecast.jsx) pre-fills a
+  // single-day range; otherwise this page opens unfiltered as usual.
+  const [fromDate, setFromDate] = useState(params?.date ?? '');
+  const [toDate, setToDate] = useState(params?.date ?? '');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [splittingId, setSplittingId] = useState(null);

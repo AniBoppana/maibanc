@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Cell } from 'recharts';
 import api from '../api';
+import { useNavigate } from '../App';
 import { CHART_PALETTE, CHART_LINE, CHART_CHARCOAL_SOFT } from '../chartColors';
 import { formatCategory } from '../format';
 
@@ -72,6 +73,7 @@ function projectRecurringOccurrences(recurring, monthStart, monthEnd) {
 }
 
 function MonthCalendar({ recurring }) {
+  const navigate = useNavigate();
   const [cursor, setCursor] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -170,9 +172,15 @@ function MonthCalendar({ recurring }) {
             >
               <div className="font-body text-[11px] text-charcoal-soft">{cell.date.getDate()}</div>
               {dayTxns.length > 0 && (
-                <div className={`mt-0.5 font-body text-[11px] font-semibold ${net < 0 ? 'text-negative' : 'text-green'}`}>
+                <button
+                  onClick={() => navigate('transactions', { date: key })}
+                  title={`View ${dayTxns.length} transaction${dayTxns.length === 1 ? '' : 's'} from this day`}
+                  className={`mt-0.5 block font-body text-[11px] font-semibold hover:underline ${
+                    net < 0 ? 'text-negative' : 'text-green'
+                  }`}
+                >
                   {net < 0 ? '−' : '+'}${Math.abs(net).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                </div>
+                </button>
               )}
               {dayRecurring.slice(0, 2).map((r, idx) => (
                 <div

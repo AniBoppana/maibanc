@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { SignedIn, SignedOut, SignIn, UserButton, useAuth } from '@clerk/clerk-react';
 import Dashboard from './components/Dashboard';
 import NetWorth from './components/NetWorth';
@@ -54,6 +54,14 @@ const PAGES = [
   { id: 'connect', label: 'Connect Bank', icon: IconBank, component: ConnectBank },
 ];
 
+// Lets any page (e.g. clicking a day on the calendar) switch tabs and hand
+// the destination page a bit of state — no router in this app, so this is
+// the one shared way to navigate-with-data instead of just navigate.
+const NavigationContext = createContext((_pageId, _params) => {});
+export function useNavigate() {
+  return useContext(NavigationContext);
+}
+
 const CLERK_APPEARANCE = {
   variables: {
     colorPrimary: '#00bf63',
@@ -89,8 +97,10 @@ function AppShell() {
     return PAGES.some((p) => p.id === fromHash) ? fromHash : 'dashboard';
   });
   const ActivePage = PAGES.find((p) => p.id === currentPage)?.component ?? Dashboard;
+  const [pageParams, setPageParams] = useState(null);
 
-  const setCurrentPage = (id) => {
+  const navigate = (id, params = null) => {
+    setPageParams(params);
     setCurrentPageState(id);
     window.history.replaceState(null, '', `#${id}`);
   };
@@ -109,7 +119,7 @@ function AppShell() {
               <button
                 key={page.id}
                 data-active={currentPage === page.id}
-                onClick={() => setCurrentPage(page.id)}
+                onClick={() => navigate(page.id)}
                 className="mc-nav-item"
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" />
@@ -122,7 +132,9 @@ function AppShell() {
       </aside>
 
       <main className="min-h-screen flex-1 overflow-y-auto">
-        <ActivePage />
+        <NavigationContext.Provider value={navigate}>
+          <ActivePage params={pageParams} />
+        </NavigationContext.Provider>
       </main>
     </div>
   );
