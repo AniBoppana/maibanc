@@ -13,10 +13,11 @@ model User {
   email     String?
   createdAt DateTime @default(now())
 
-  items         PlaidItem[]
-  budgets       Budget[]
-  categoryRules CategoryRule[]
-  savingsGoals  SavingsGoal[]
+  items             PlaidItem[]
+  budgets           Budget[]
+  categoryRules     CategoryRule[]
+  savingsGoals      SavingsGoal[]
+  groupedCategories GroupedCategory[]
 }
 
 // One row per bank/institution login connected via Plaid Link.
@@ -192,6 +193,25 @@ model SavingsGoal {
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   linkedAccount Account? @relation(fields: [linkedAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+// A user-defined rollup of categories and/or accounts under one label —
+// e.g. a "SoFi Savings" group combining transactions categorized as
+// Travel and Leisure that all really came from one account. members is
+// [{ type: "category" | "account", value: string }]; a JSON column rather
+// than a join table since members mix two different kinds of reference
+// and the list is small and always read/written as a whole.
+model GroupedCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  members   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

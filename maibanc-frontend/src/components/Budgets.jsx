@@ -5,7 +5,7 @@ import { formatCategory } from '../format';
 import { useStamp } from '../useStamp';
 
 function money(n) {
-  return `$${(n ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `$${(n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function SavingsGoals() {
@@ -195,6 +195,205 @@ function SavingsGoals() {
   );
 }
 
+function CategoryGroups() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+  const [pendingMembers, setPendingMembers] = useState([]);
+  const [memberType, setMemberType] = useState('category');
+  const [memberValue, setMemberValue] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+
+  const { data: groups, isLoading } = useQuery({
+    queryKey: ['groups'],
+    queryFn: async () => (await api.get('/api/groups')).data?.groups || [],
+  });
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => (await api.get('/api/transactions/categories')).data?.categories || [],
+  });
+  const { data: accountsData } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: async () => (await api.get('/api/accounts')).data,
+  });
+
+  const createGroup = useMutation({
+    mutationFn: async () => api.post('/api/groups', { name, members: pendingMembers }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      setName('');
+      setPendingMembers([]);
+    },
+  });
+
+  const deleteGroup = useMutation({
+    mutationFn: async (id) => api.delete(`/api/groups/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['groups'] }),
+  });
+
+  const addMember = () => {
+    if (!memberValue) return;
+    if (pendingMembers.some((m) => m.type === memberType && m.value === memberValue)) return;
+    setPendingMembers((prev) => [...prev, { type: memberType, value: memberValue }]);
+    setMemberValue('');
+  };
+
+  const removeMember = (idx) => setPendingMembers((prev) => prev.filter((_, i) => i !== idx));
+
+  const memberLabel = (m) => {
+    if (m.type === 'category') return formatCategory(m.value);
+    const account = accountsData?.accounts?.find((a) => a.id === m.value);
+    return account ? account.nickname ?? account.name : m.value;
+  };
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    if (!name || pendingMembers.length === 0) return;
+    createGroup.mutate();
+  };
+
+  return (
+    <div className="mt-10">
+      <h2 className="mb-2 font-display text-xl font-bold text-charcoal">Category Groups</h2>
+      <p className="mb-6 font-body text-[12.5px] text-charcoal-soft">
+        Combine categories and/or accounts under one label — e.g. group "Travel" and "Leisure" together as
+        "SoFi Savings" if that's really all one account to you.
+      </p>
+
+      <form onSubmit={handleCreate} className="mc-card mb-6 space-y-4 p-5">
+        <label className="block">
+          <span className="mb-1.5 block font-body text-[11.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
+            Group Name
+          </span>
+          <input
+            type="text"
+            placeholder="SoFi Savings"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mc-input w-full sm:w-64"
+          />
+        </label>
+
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[auto_1fr_auto]">
+          <label className="block">
+            <span className="mb-1.5 block font-body text-[11.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
+              Add
+            </span>
+            <select
+              value={memberType}
+              onChange={(e) => {
+                setMemberType(e.target.value);
+                setMemberValue('');
+              }}
+              className="mc-select"
+            >
+              <option value="category">Category</option>
+              <option value="account">Account</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block font-body text-[11.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
+              &nbsp;
+            </span>
+            <select value={memberValue} onChange={(e) => setMemberValue(e.target.value)} className="mc-select w-full">
+              <option value="">Select {memberType}…</option>
+              {memberType === 'category'
+                ? categories?.map((c) => (
+                    <option key={c} value={c}>
+                      {formatCategory(c)}
+                    </option>
+                  ))
+                : accountsData?.accounts?.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.nickname ?? a.name}
+                    </option>
+                  ))}
+            </select>
+          </label>
+          <button type="button" onClick={addMember} className="mc-btn-secondary">
+            Add to group
+          </button>
+        </div>
+
+        {pendingMembers.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {pendingMembers.map((m, i) => (
+              <span key={i} className="mc-chip bg-blue-soft text-blue">
+                {memberLabel(m)}
+                <button type="button" onClick={() => removeMember(i)} className="ml-1.5 font-semibold">
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={createGroup.isPending || !name || pendingMembers.length === 0}
+          className="mc-btn-primary disabled:opacity-40"
+        >
+          {createGroup.isPending ? 'Creating…' : 'Create Group'}
+        </button>
+      </form>
+
+      {isLoading ? (
+        <p className="font-body text-[13px] text-charcoal-soft">Loading…</p>
+      ) : groups?.length > 0 ? (
+        <div className="space-y-3">
+          {groups.map((group) => {
+            const expanded = expandedId === group.id;
+            return (
+              <div key={group.id} className="mc-card overflow-hidden p-0">
+                <button
+                  onClick={() => setExpandedId(expanded ? null : group.id)}
+                  className="flex w-full items-center justify-between p-5 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-body text-[11px] text-charcoal-soft">{expanded ? '▾' : '▸'}</span>
+                    <span className="font-display text-[15px] font-bold text-charcoal">{group.name}</span>
+                    <span className="font-body text-[11.5px] text-charcoal-soft">
+                      ({group.items.length} item{group.items.length === 1 ? '' : 's'})
+                    </span>
+                  </div>
+                  <span className="mc-tnum font-body text-[14px] font-semibold text-charcoal">{money(group.total)}</span>
+                </button>
+                {expanded && (
+                  <div className="border-t border-line px-5 py-3">
+                    {group.items.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between py-2 text-[13px]">
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`mc-chip font-mono text-[10px] uppercase ${
+                              item.type === 'account' ? 'bg-blue-soft text-blue' : 'bg-green-soft text-green'
+                            }`}
+                          >
+                            {item.type}
+                          </span>
+                          <span className="text-charcoal">{item.label}</span>
+                        </span>
+                        <span className="mc-tnum text-charcoal-soft">{money(item.amount)}</span>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => deleteGroup.mutate(group.id)}
+                      disabled={deleteGroup.isPending}
+                      className="mt-2 font-body text-[12px] font-semibold text-negative hover:underline"
+                    >
+                      Remove group
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="font-body text-[13px] text-charcoal-soft">No category groups yet — create one above.</p>
+      )}
+    </div>
+  );
+}
+
 export default function Budgets() {
   const queryClient = useQueryClient();
   const [newCategory, setNewCategory] = useState('');
@@ -320,6 +519,7 @@ export default function Budgets() {
       )}
 
       <SavingsGoals />
+      <CategoryGroups />
     </div>
   );
 }

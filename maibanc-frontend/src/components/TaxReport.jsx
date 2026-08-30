@@ -6,7 +6,7 @@ import { formatCategory } from '../format';
 function money(n) {
   if (n == null) return '—';
   const abs = Math.abs(n);
-  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function TaxReport() {

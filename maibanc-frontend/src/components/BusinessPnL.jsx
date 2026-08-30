@@ -6,7 +6,7 @@ import { CHART_LINE, CHART_CHARCOAL_SOFT } from '../chartColors';
 function money(n) {
   if (n == null) return '—';
   const abs = Math.abs(n);
-  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function BusinessPnL() {
