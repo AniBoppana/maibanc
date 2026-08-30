@@ -417,7 +417,13 @@ export default function Transactions({ params } = {}) {
       )}
 
       <div className="mc-card p-6">
-        <table className="mc-table">
+        {/* table-layout: fixed + the colgroup below already make column overlap
+            impossible — long text wraps within its own cell instead of bleeding
+            into a neighbor. What genuinely has no fallback is a very narrow
+            window: below this width the columns would otherwise be squeezed
+            into unreadable slivers, so it scrolls horizontally instead. */}
+        <div className="overflow-x-auto">
+          <table className="mc-table" style={{ minWidth: '760px' }}>
           <colgroup>
             <col style={{ width: '11%' }} />
             <col style={{ width: '24%' }} />
@@ -547,7 +553,8 @@ export default function Transactions({ params } = {}) {
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <div className="mt-6">
