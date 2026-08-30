@@ -450,7 +450,16 @@ export default function Transactions({ params } = {}) {
                 <Fragment key={txn.id}>
                   <tr>
                     <td className="mc-tnum whitespace-nowrap align-top font-body text-[12.5px] text-charcoal-soft">
-                      {new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {/* Plaid's dates are date-only and always parse as UTC midnight — display
+                          them the same way the backend's date filters read them, or a
+                          transaction's shown date can disagree with which day it actually
+                          filters under (see Forecast.jsx's calendar for the same convention). */}
+                      {new Date(txn.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'UTC',
+                      })}
                     </td>
                     <td className="align-top">
                       <div className="font-body text-[13px] text-charcoal">{txn.name}</div>

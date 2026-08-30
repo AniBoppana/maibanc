@@ -16,12 +16,26 @@ function money(n, opts = {}) {
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-// Local getters on purpose, matching how the rest of the app already
-// displays these dates (e.g. Transactions.jsx's toLocaleDateString) — using
-// UTC getters here instead would make this calendar disagree by a day with
-// every other date shown in the app for viewers west of UTC.
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+// Grid cells are built from plain local Date objects (new Date(y, m, d)) —
+// this keys them by the viewer's own local calendar, which is what "today"
+// and "which weekday is the 1st" actually mean.
 function dateKey(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Transaction dates and recurring-charge dates come from the backend as
+// Plaid's date-only strings, which JS (and Postgres) always treat as UTC
+// midnight — the backend's own from/to filter parses date strings the same
+// way. Bucketing those by *local* calendar day would silently shift every
+// transaction back a day for any viewer west of UTC, so a cell could show
+// a transaction that clicking through to Transactions (which filters in
+// that same UTC sense) would then fail to find.
+function utcDateKey(d) {
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
 function buildMonthGrid(year, month) {
@@ -83,15 +97,23 @@ function MonthCalendar({ recurring }) {
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  // Built as plain date strings rather than via a local Date + toISOString()
+  // — that conversion can push the month's last day into the next UTC
+  // calendar day for any viewer west of UTC (e.g. 11:59pm PDT on the 31st
+  // is already 6:59am UTC on the 1st).
+  const monthStartStr = `${year}-${pad2(month + 1)}-01`;
+  const monthEndStr = `${year}-${pad2(month + 1)}-${pad2(daysInMonth)}`;
+  // Separate UTC instants, used only to bound the recurring-charge
+  // projection below (which walks real timestamps, not date strings).
+  const monthStartUTC = new Date(Date.UTC(year, month, 1));
+  const monthEndUTC = new Date(Date.UTC(year, month, daysInMonth, 23, 59, 59, 999));
 
   const { data: transactions } = useQuery({
     queryKey: ['transactions-calendar', year, month],
     queryFn: async () => {
-      const from = monthStart.toISOString().slice(0, 10);
-      const to = monthEnd.toISOString().slice(0, 10);
-      return (await api.get(`/api/transactions?from=${from}&to=${to}&limit=500`)).data?.transactions || [];
+      return (await api.get(`/api/transactions?from=${monthStartStr}&to=${monthEndStr}&limit=500`)).data
+        ?.transactions || [];
     },
   });
 
@@ -100,7 +122,7 @@ function MonthCalendar({ recurring }) {
   const transactionsByDay = useMemo(() => {
     const map = new Map();
     for (const t of transactions ?? []) {
-      const key = dateKey(new Date(t.date));
+      const key = utcDateKey(new Date(t.date));
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(t);
     }
@@ -109,8 +131,8 @@ function MonthCalendar({ recurring }) {
 
   const recurringByDay = useMemo(() => {
     const map = new Map();
-    for (const occ of projectRecurringOccurrences(recurring ?? [], monthStart, monthEnd)) {
-      const key = dateKey(occ.date);
+    for (const occ of projectRecurringOccurrences(recurring ?? [], monthStartUTC, monthEndUTC)) {
+      const key = utcDateKey(occ.date);
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(occ);
     }
