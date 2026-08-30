@@ -36,8 +36,9 @@ function money(n, opts = {}) {
   if (n == null) return '—';
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
-  const maximumFractionDigits = opts.maximumFractionDigits ?? 0;
-  return `${sign}$${abs.toLocaleString('en-US', { maximumFractionDigits })}`;
+  const maximumFractionDigits = opts.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = opts.minimumFractionDigits ?? Math.min(2, maximumFractionDigits);
+  return `${sign}$${abs.toLocaleString('en-US', { minimumFractionDigits, maximumFractionDigits })}`;
 }
 
 const TYPE_LABELS = {
@@ -161,7 +162,7 @@ export default function Dashboard() {
                 />
                 <YAxis
                   tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }}
-                  tickFormatter={(v) => money(v)}
+                  tickFormatter={(v) => money(v, { maximumFractionDigits: 0 })}
                   axisLine={false}
                   tickLine={false}
                   width={70}

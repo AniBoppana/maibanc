@@ -6,10 +6,12 @@ import { useNavigate } from '../App';
 import { CHART_PALETTE, CHART_LINE, CHART_CHARCOAL_SOFT } from '../chartColors';
 import { formatCategory } from '../format';
 
-function money(n) {
+function money(n, opts = {}) {
   if (n == null) return '—';
   const abs = Math.abs(n);
-  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  const maximumFractionDigits = opts.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = opts.minimumFractionDigits ?? Math.min(2, maximumFractionDigits);
+  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { minimumFractionDigits, maximumFractionDigits })}`;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -267,7 +269,7 @@ export default function Forecast() {
                 axisLine={false}
                 tickLine={false}
               />
-              <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v)} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v, { maximumFractionDigits: 0 })} axisLine={false} tickLine={false} />
               <Tooltip formatter={(v) => money(v)} labelFormatter={formatCategory} contentStyle={{ borderRadius: 10, border: '1px solid #e6eae5', fontSize: 12.5 }} />
               <Bar dataKey="monthlyAverage" radius={[6, 6, 0, 0]} isAnimationActive={false}>
                 {categoryAverages.map((entry, i) => (

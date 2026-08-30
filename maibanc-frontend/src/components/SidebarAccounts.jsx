@@ -10,7 +10,7 @@ const TYPE_LABELS = {
 
 function money(n) {
   const abs = Math.abs(n ?? 0);
-  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  return `${n < 0 ? '−' : ''}$${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function SidebarAccounts() {

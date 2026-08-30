@@ -19,8 +19,9 @@ function money(n, opts = {}) {
   if (n == null) return '—';
   const abs = Math.abs(n);
   const sign = n < 0 ? '−' : '';
-  const maximumFractionDigits = opts.maximumFractionDigits ?? 0;
-  return `${sign}$${abs.toLocaleString('en-US', { maximumFractionDigits })}`;
+  const maximumFractionDigits = opts.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = opts.minimumFractionDigits ?? Math.min(2, maximumFractionDigits);
+  return `${sign}$${abs.toLocaleString('en-US', { minimumFractionDigits, maximumFractionDigits })}`;
 }
 
 const BUCKET_LABELS = {
@@ -104,7 +105,7 @@ export default function NetWorth() {
               axisLine={false}
               tickLine={false}
             />
-            <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v)} axisLine={false} tickLine={false} width={75} />
+            <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v, { maximumFractionDigits: 0 })} axisLine={false} tickLine={false} width={75} />
             <Tooltip formatter={(v) => money(v)} contentStyle={{ borderRadius: 10, border: '1px solid #e6eae5', fontSize: 12.5 }} />
             <Area type="monotone" dataKey="netWorth" stroke="#00bf63" strokeWidth={2.5} fill="url(#nwFill)" isAnimationActive={false} />
           </AreaChart>
@@ -130,7 +131,7 @@ export default function NetWorth() {
               axisLine={false}
               tickLine={false}
             />
-            <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v)} axisLine={false} tickLine={false} width={75} />
+            <YAxis tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v, { maximumFractionDigits: 0 })} axisLine={false} tickLine={false} width={75} />
             <Tooltip formatter={(v) => money(v)} contentStyle={{ borderRadius: 10, border: '1px solid #e6eae5', fontSize: 12.5 }} />
             <Legend wrapperStyle={{ fontSize: 12.5 }} />
             <Area type="monotone" dataKey="totalAssets" name="Assets" stackId="1" stroke="#2e56a8" fill="#2e56a8" fillOpacity={0.5} isAnimationActive={false} />
@@ -144,7 +145,7 @@ export default function NetWorth() {
         <ResponsiveContainer width="100%" height={Math.max(200, breakdown.length * 36)}>
           <BarChart data={breakdown} layout="vertical" margin={{ left: 12 }}>
             <CartesianGrid stroke={CHART_LINE} horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v)} axisLine={false} tickLine={false} />
+            <XAxis type="number" tick={{ fontSize: 11, fill: CHART_CHARCOAL_SOFT }} tickFormatter={(v) => money(v, { maximumFractionDigits: 0 })} axisLine={false} tickLine={false} />
             <YAxis
               type="category"
               dataKey="bucket"
