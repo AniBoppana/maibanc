@@ -58,6 +58,13 @@ export async function getNetWorthHistory(userId: string, days = 365) {
 
   // Per-account daily balance series, end of day, oldest first.
   const perAccountSeries = new Map<string, Map<string, number>>();
+  // The earliest day per account for which its balance is grounded in a
+  // real *transaction* (not merely a snapshot) — used below to decide how
+  // far back the combined total can honestly be shown. Snapshots don't
+  // count for this: every account gets one from whenever the daily
+  // snapshot job first ran, which says nothing about how far into the
+  // past that account's balance is actually known.
+  const earliestGroundedByAccount = new Map<string, string>();
 
   for (const account of accounts) {
     const series = new Map<string, number>();
@@ -71,6 +78,7 @@ export async function getNetWorthHistory(userId: string, days = 365) {
     }
 
     let running = account.currentBalance ?? 0;
+    let earliestTxnGrounded: string | null = null;
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
@@ -79,11 +87,24 @@ export async function getNetWorthHistory(userId: string, days = 365) {
       const recorded = snapshotByDay.get(key);
       const balanceForDay = recorded ?? running;
       series.set(key, balanceForDay);
+      if (txnByDay.has(key)) earliestTxnGrounded = key;
       // Undo this day's transactions to step to the previous day's balance.
       running = balanceForDay + (txnByDay.get(key) ?? 0);
     }
     perAccountSeries.set(account.id, series);
+    // Account types with no transaction activity at all (mortgages,
+    // 401(k)s, HSAs, etc.) don't get a say in how far back the combined
+    // total can go — they just contribute their flat current balance for
+    // whatever range transaction-bearing accounts establish is real.
+    if (earliestTxnGrounded) earliestGroundedByAccount.set(account.id, earliestTxnGrounded);
   }
+
+  // The combined total is only meaningful from whichever grounded account's
+  // history runs out soonest — before that, at least one account's
+  // contribution is pure guesswork, not reconstructed from anything real.
+  // If no account has any real grounding at all, don't truncate anything.
+  const groundedDates = Array.from(earliestGroundedByAccount.values());
+  const earliestGroundedOverall = groundedDates.length > 0 ? groundedDates.sort().reverse()[0] : dateKey(windowStart);
 
   const days_: {
     date: string;
@@ -98,6 +119,7 @@ export async function getNetWorthHistory(userId: string, days = 365) {
 
   for (let d = new Date(windowStart); d <= today; d = new Date(d.getTime() + DAY_MS)) {
     const key = dateKey(d);
+    if (key < earliestGroundedOverall) continue;
     let assets = 0;
     let liabilities = 0;
     let anyRecorded = false;
