@@ -134,8 +134,24 @@ plaidRouter.post("/exchange-public-token", requireAuth, async (req, res) => {
       )
     );
 
-    await syncTransactionsForItem(item.id, accessToken);
-    await syncInvestmentsForItem(item.id, accessToken);
+    // A freshly linked real (non-sandbox) institution often hasn't finished
+    // Plaid's own background historical pull yet — /transactions/sync can
+    // legitimately come back empty or with PRODUCT_NOT_READY at this exact
+    // moment. That's not a failure to link the account (already created
+    // above), just a "not ready yet": the SYNC_UPDATES_AVAILABLE webhook (or
+    // the manual Sync button) picks up the rest once Plaid finishes. Letting
+    // this throw here would 500 the whole response despite the account
+    // having linked successfully.
+    try {
+      await syncTransactionsForItem(item.id, accessToken);
+    } catch (err: any) {
+      console.error(`Initial transaction sync failed for item ${item.id}:`, err?.response?.data ?? err);
+    }
+    try {
+      await syncInvestmentsForItem(item.id, accessToken);
+    } catch (err: any) {
+      console.error(`Initial investments sync failed for item ${item.id}:`, err?.response?.data ?? err);
+    }
 
     res.json({
       itemId: item.id,
