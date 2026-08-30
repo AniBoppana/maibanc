@@ -423,7 +423,7 @@ export default function Transactions({ params } = {}) {
             window: below this width the columns would otherwise be squeezed
             into unreadable slivers, so it scrolls horizontally instead. */}
         <div className="overflow-x-auto">
-          <table className="mc-table" style={{ minWidth: '760px' }}>
+          <table className="mc-table mc-table-compact" style={{ minWidth: '700px' }}>
           <colgroup>
             <col style={{ width: '11%' }} />
             <col style={{ width: '24%' }} />
@@ -455,21 +455,23 @@ export default function Transactions({ params } = {}) {
               transactions.map((txn) => (
                 <Fragment key={txn.id}>
                   <tr>
-                    <td className="mc-tnum whitespace-nowrap align-top font-body text-[12.5px] text-charcoal-soft">
+                    <td className="mc-tnum whitespace-nowrap align-top font-body text-[11.5px] text-charcoal-soft">
                       {/* Plaid's dates are date-only and always parse as UTC midnight — display
                           them the same way the backend's date filters read them, or a
                           transaction's shown date can disagree with which day it actually
-                          filters under (see Forecast.jsx's calendar for the same convention). */}
+                          filters under (see Forecast.jsx's calendar for the same convention).
+                          Compact numeric format: "Aug 28, 2026" was wide enough to overflow
+                          the Date column's 11% width and bleed into Description. */}
                       {new Date(txn.date).toLocaleDateString('en-US', {
-                        month: 'short',
+                        month: 'numeric',
                         day: 'numeric',
-                        year: 'numeric',
+                        year: '2-digit',
                         timeZone: 'UTC',
                       })}
                     </td>
                     <td className="align-top">
-                      <div className="font-body text-[13px] text-charcoal">{txn.name}</div>
-                      <div className="font-body text-[11px] text-charcoal-soft">{accountLabel(txn.account)}</div>
+                      <div className="font-body text-[12px] text-charcoal">{txn.name}</div>
+                      <div className="font-body text-[10.5px] text-charcoal-soft">{accountLabel(txn.account)}</div>
                     </td>
                     <td className="align-top">
                       <EditableCategory
@@ -508,7 +510,7 @@ export default function Transactions({ params } = {}) {
                       </select>
                     </td>
                     <td
-                      className={`mc-tnum align-top text-right font-body text-[13.5px] font-semibold ${
+                      className={`mc-tnum align-top text-right font-body text-[12.5px] font-semibold ${
                         txn.amount > 0 ? 'text-negative' : 'text-green'
                       }`}
                     >

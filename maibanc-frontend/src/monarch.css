@@ -130,6 +130,19 @@
   padding-right: 0;
 }
 
+/* Denser variant for tables with many columns (Transactions) — same
+   structure, tighter padding and type scale so more fits before the
+   horizontal-scroll fallback kicks in. */
+.mc-table-compact th {
+  padding: 0 12px 8px 0;
+  font-size: 10.5px;
+}
+
+.mc-table-compact td {
+  padding: 9px 12px 9px 0;
+  font-size: 12.5px;
+}
+
 .mc-table tr:last-child td {
   border-bottom: none;
 }

@@ -41,25 +41,6 @@ function money(n, opts = {}) {
   return `${sign}$${abs.toLocaleString('en-US', { minimumFractionDigits, maximumFractionDigits })}`;
 }
 
-const SMALL_SLICE_THRESHOLD = 0.05;
-
-// Labels only slices that can actually fit one — below the threshold the
-// text would overlap its neighbors on a donut this size, so those get a
-// legend entry (rendered separately, below) instead.
-function renderPieSliceLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) {
-  if (percent < SMALL_SLICE_THRESHOLD) return null;
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) / 2;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  return (
-    <text x={x} y={y} fill="#ffffff" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700}>
-      <tspan x={x} dy="-0.3em">{formatCategory(name)}</tspan>
-      <tspan x={x} dy="1.1em">{Math.round(percent * 100)}%</tspan>
-    </text>
-  );
-}
-
 const TYPE_LABELS = {
   depository: 'Banking',
   credit: 'Credit Cards',
@@ -213,8 +194,6 @@ export default function Dashboard() {
                     paddingAngle={2}
                     strokeWidth={0}
                     isAnimationActive={false}
-                    label={renderPieSliceLabel}
-                    labelLine={false}
                   >
                     {categorySpend.map((entry, i) => (
                       <Cell key={entry.category} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
@@ -228,19 +207,15 @@ export default function Dashboard() {
               </ResponsiveContainer>
               {(() => {
                 const total = categorySpend.reduce((sum, c) => sum + c.monthlyAverage, 0);
-                const smallSlices = categorySpend
-                  .map((c, i) => ({ ...c, colorIndex: i, percent: total > 0 ? c.monthlyAverage / total : 0 }))
-                  .filter((c) => c.percent < SMALL_SLICE_THRESHOLD);
-                if (smallSlices.length === 0) return null;
                 return (
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5">
-                    {smallSlices.map((c) => (
+                    {categorySpend.map((c, i) => (
                       <span key={c.category} className="flex items-center gap-1.5 font-body text-[10.5px] text-charcoal-soft">
                         <span
                           className="inline-block h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: CHART_PALETTE[c.colorIndex % CHART_PALETTE.length] }}
+                          style={{ backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length] }}
                         />
-                        {formatCategory(c.category)} · {Math.round(c.percent * 100)}%
+                        {formatCategory(c.category)} · {total > 0 ? Math.round((c.monthlyAverage / total) * 100) : 0}%
                       </span>
                     ))}
                   </div>
