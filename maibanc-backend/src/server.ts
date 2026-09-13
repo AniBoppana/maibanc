@@ -18,6 +18,7 @@ import { categoryRulesRouter } from "./routes/categoryRules";
 import { savingsGoalsRouter } from "./routes/savingsGoals";
 import { alertsRouter } from "./routes/alerts";
 import { groupsRouter } from "./routes/groups";
+import { reportsRouter } from "./routes/reports";
 import { devTokenRouter } from "./routes/devToken";
 
 // ── Startup env check ─────────────────────────────────────────────────────────
@@ -85,6 +86,7 @@ app.use("/api/category-rules", categoryRulesRouter);
 app.use("/api/savings-goals", savingsGoalsRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/groups", groupsRouter);
+app.use("/api/reports", reportsRouter);
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: "Not found." }));

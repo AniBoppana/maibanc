@@ -9,6 +9,7 @@ import Investments from './components/Investments';
 import Forecast from './components/Forecast';
 import TaxReport from './components/TaxReport';
 import BusinessPnL from './components/BusinessPnL';
+import Reports from './components/Reports';
 import Insights from './components/Insights';
 import ConnectBank from './components/ConnectBank';
 import SidebarAccounts from './components/SidebarAccounts';
@@ -21,6 +22,7 @@ import {
   IconBarChart,
   IconCalendar,
   IconFile,
+  IconClipboard,
   IconBriefcase,
   IconSpark,
   IconBank,
@@ -48,6 +50,7 @@ const PAGES = [
   { id: 'forecast', label: 'Calendar / Forecast', icon: IconCalendar, component: Forecast },
   { id: 'budgets', label: 'Budgets', icon: IconTarget, component: Budgets },
   { id: 'networth', label: 'Net Worth', icon: IconTrendUp, component: NetWorth },
+  { id: 'reports', label: 'Reports', icon: IconClipboard, component: Reports },
   { id: 'tax', label: 'Tax Report', icon: IconFile, component: TaxReport },
   { id: 'business', label: 'Business P&L', icon: IconBriefcase, component: BusinessPnL },
   { id: 'insights', label: 'Insights', icon: IconSpark, component: Insights },

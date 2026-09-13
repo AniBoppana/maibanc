@@ -82,6 +82,18 @@ export function IconFile({ className }) {
   );
 }
 
+export function IconClipboard({ className }) {
+  return (
+    <svg {...base} className={className}>
+      <rect x="5" y="4.5" width="14" height="17" rx="1.8" />
+      <path d="M9 3.5h6a1 1 0 0 1 1 1v1.5H8V4.5a1 1 0 0 1 1-1z" />
+      <line x1="8.5" y1="11" x2="15.5" y2="11" />
+      <line x1="8.5" y1="14.5" x2="15.5" y2="14.5" />
+      <line x1="8.5" y1="18" x2="13" y2="18" />
+    </svg>
+  );
+}
+
 export function IconBriefcase({ className }) {
   return (
     <svg {...base} className={className}>
