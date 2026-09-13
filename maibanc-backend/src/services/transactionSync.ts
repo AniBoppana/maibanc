@@ -2,6 +2,28 @@ import { plaidClient } from "./plaidClient";
 import { prisma } from "../db/client";
 
 /**
+ * Refreshes stored balances for every account under a Plaid Item from a
+ * live Plaid call. Nothing else in the app ever updates currentBalance
+ * after the account is first linked — GET /api/accounts is a pure DB read
+ * — so without this, a real-world balance change never reaches Maibanc no
+ * matter how long you wait.
+ */
+async function refreshAccountBalances(itemDbId: string, accessToken: string) {
+  const resp = await plaidClient.accountsGet({ access_token: accessToken });
+  await Promise.all(
+    resp.data.accounts.map((acct) =>
+      prisma.account.updateMany({
+        where: { plaidAccountId: acct.account_id, itemId: itemDbId },
+        data: {
+          currentBalance: acct.balances.current ?? null,
+          availableBalance: acct.balances.available ?? null,
+        },
+      })
+    )
+  );
+}
+
+/**
  * Syncs transactions for a single Plaid Item using the cursor-based
  * /transactions/sync endpoint. Stores the cursor after each run so
  * subsequent syncs are fast and incremental.
@@ -12,6 +34,15 @@ export async function syncTransactionsForItem(itemDbId: string, accessToken: str
     include: { accounts: true },
   });
   if (!item) return;
+
+  // Balances aren't part of /transactions/sync's response at all, so this
+  // has to be a separate call. Runs first and independently of the
+  // transaction loop below so a Plaid hiccup on one doesn't block the other.
+  try {
+    await refreshAccountBalances(itemDbId, accessToken);
+  } catch (err: any) {
+    console.error(`Balance refresh failed for item ${itemDbId}:`, err?.response?.data ?? err);
+  }
 
   const accountIdByPlaidId = new Map(
     item.accounts.map((a: { plaidAccountId: string; id: string }) => [a.plaidAccountId, a.id])

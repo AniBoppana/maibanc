@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import api from '../api';
 
 const TYPE_LABELS = {
@@ -14,9 +15,24 @@ function money(n) {
 }
 
 export default function SidebarAccounts() {
+  const queryClient = useQueryClient();
+  const [justRefreshed, setJustRefreshed] = useState(false);
   const { data } = useQuery({
     queryKey: ['accounts'],
     queryFn: async () => (await api.get('/api/accounts')).data,
+  });
+
+  // Balances only ever update when a sync runs (linking, a webhook, or this
+  // button) — nothing refreshes them just from opening the app.
+  const refresh = useMutation({
+    mutationFn: async () => api.post('/api/transactions/sync'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['forecast'] });
+      setJustRefreshed(true);
+      setTimeout(() => setJustRefreshed(false), 2500);
+    },
   });
 
   const grouped = new Map();
@@ -29,6 +45,19 @@ export default function SidebarAccounts() {
 
   return (
     <div className="mt-6 space-y-4 border-t border-line pt-4">
+      <div className="flex items-center justify-between px-2">
+        <span className="font-body text-[10.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
+          Accounts
+        </span>
+        <button
+          onClick={() => refresh.mutate()}
+          disabled={refresh.isPending}
+          title="Refresh balances from your bank"
+          className="font-body text-[11px] font-semibold text-green hover:underline disabled:opacity-50"
+        >
+          {refresh.isPending ? 'Refreshing…' : justRefreshed ? 'Refreshed' : 'Refresh'}
+        </button>
+      </div>
       {Array.from(grouped.entries()).map(([type, accounts]) => (
         <div key={type}>
           <div className="mb-1 px-2 font-body text-[10.5px] font-semibold uppercase tracking-wide text-charcoal-soft">
