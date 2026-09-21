@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import api from '../api';
 import { useStamp } from '../useStamp';
+import ImportPanel from './ImportPanel';
 
 function EditableAccountName({ account, onSave }) {
   const [editing, setEditing] = useState(false);
@@ -55,6 +56,13 @@ function EditableAccountName({ account, onSave }) {
 const ERROR_MESSAGES = {
   ITEM_LOGIN_REQUIRED: 'This bank needs you to log in again — your credentials or MFA likely changed.',
 };
+
+// "manual" is the placeholder item manually-imported accounts hang off of
+// (see backend routes/imports.ts) — it has no real Plaid connection to
+// reconnect, so it should never show the "needs attention" treatment.
+function needsReconnect(item) {
+  return item.status !== 'active' && item.status !== 'manual';
+}
 
 function reconnectMessage(item) {
   if (item.status === 'expiring') {
@@ -125,6 +133,11 @@ export default function ConnectBank() {
   const { data: items, isLoading } = useQuery({
     queryKey: ['plaidItems'],
     queryFn: async () => (await api.get('/api/plaid/items')).data?.items || [],
+  });
+
+  const { data: accountsData } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: async () => (await api.get('/api/accounts')).data,
   });
 
   const exchangeToken = useMutation({
@@ -210,7 +223,7 @@ export default function ConnectBank() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="font-display text-[15px] font-bold text-charcoal">{item.institutionName}</div>
                 <div className="flex items-center gap-4">
-                  {item.status !== 'active' && (
+                  {needsReconnect(item) && (
                     <ReconnectButton
                       itemId={item.id}
                       onReconnected={() => {
@@ -228,7 +241,7 @@ export default function ConnectBank() {
                   </button>
                 </div>
               </div>
-              {item.status !== 'active' && (
+              {needsReconnect(item) && (
                 <div className="mb-3 rounded-lg border border-gold/30 bg-gold-soft p-3 font-body text-[12.5px] text-charcoal">
                   {reconnectMessage(item)}
                 </div>
@@ -271,6 +284,8 @@ export default function ConnectBank() {
       ) : (
         <p className="mb-10 font-body text-[13px] text-charcoal-soft">No accounts connected yet.</p>
       )}
+
+      <ImportPanel accounts={accountsData?.accounts ?? []} />
     </div>
   );
 }
