@@ -1,0 +1,61 @@
+name: Build Desktop App
+
+# Builds the Tauri desktop shell for macOS and Windows. There's no bundled
+# frontend to compile here — the app just points its webview at the live
+# https://www.maibanc.app, so this is purely a Rust build per platform.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "maibanc-desktop/**"
+      - ".github/workflows/desktop-build.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            name: macos
+          - platform: windows-latest
+            name: windows
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: maibanc-desktop/src-tauri
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0" --locked
+
+      - name: Build
+        working-directory: maibanc-desktop
+        run: cargo tauri build
+
+      - name: Upload macOS bundles
+        if: matrix.name == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: maibanc-macos
+          path: |
+            maibanc-desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            maibanc-desktop/src-tauri/target/release/bundle/macos/*.app
+
+      - name: Upload Windows bundles
+        if: matrix.name == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: maibanc-windows
+          path: |
+            maibanc-desktop/src-tauri/target/release/bundle/msi/*.msi
+            maibanc-desktop/src-tauri/target/release/bundle/nsis/*.exe
