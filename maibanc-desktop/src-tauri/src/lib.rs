@@ -7,8 +7,21 @@ const APP_ORIGIN_HOSTS: [&str; 2] = ["www.maibanc.app", "maibanc.app"];
 // (password reset, email verification links) land here directly.
 const AUTH_HOST: &str = "clerk.maibanc.app";
 
+// "Continue with Google" does a top-level redirect (not a popup) through
+// Google's own consent screen and back to AUTH_HOST — the whole round trip
+// has to happen in this SAME webview, because Clerk's OAuth state is tied
+// to this window's cookies/storage. Sending the Google leg to the system
+// browser instead (as any other external host would be) splits the flow
+// across two separate storage contexts and Clerk rejects the callback with
+// "Unauthorized request" / authorization_invalid — this is exactly the bug
+// that shipped initially and was caught by the user.
+//
+// Any OAuth provider added in Clerk's dashboard later (Apple, Microsoft,
+// etc.) needs its own consent-screen host added here for the same reason.
+const OAUTH_PROVIDER_HOSTS: [&str; 1] = ["accounts.google.com"];
+
 fn is_in_app_host(host: &str) -> bool {
-    APP_ORIGIN_HOSTS.contains(&host) || host == AUTH_HOST
+    APP_ORIGIN_HOSTS.contains(&host) || host == AUTH_HOST || OAUTH_PROVIDER_HOSTS.contains(&host)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -78,6 +91,15 @@ mod tests {
     }
 
     #[test]
+    fn allows_configured_oauth_providers() {
+        // Google's consent screen is a required hop in "Continue with
+        // Google" — blocking it (as any other external host is blocked)
+        // breaks sign-in entirely, since the flow must complete in this
+        // same webview to share Clerk's OAuth state.
+        assert!(is_in_app_host("accounts.google.com"));
+    }
+
+    #[test]
     fn rejects_everything_else() {
         // A bank's OAuth login page, Plaid's own domain, an unrelated site,
         // and a lookalike host that merely contains "maibanc.app" as a
@@ -87,5 +109,7 @@ mod tests {
         assert!(!is_in_app_host("example.com"));
         assert!(!is_in_app_host("maibanc.app.evil.com"));
         assert!(!is_in_app_host("notmaibanc.app"));
+        // A lookalike Google domain must not slip in via a loose match.
+        assert!(!is_in_app_host("accounts.google.com.evil.com"));
     }
 }
